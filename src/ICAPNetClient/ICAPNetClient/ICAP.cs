@@ -1,40 +1,38 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using System.Threading;
 using System.Net;
 using System.Net.Sockets;
-using System.IO;
+using System.Text;
 
 namespace ICAPNameSpace
 {
     public class ICAP : IDisposable
     {
-        private String serverIP;
-        private int port;
+        private readonly String serverIP;
+        private readonly int port;
 
         private Socket sender;
-        
-        private String icapService;
+
+        private readonly String icapService;
         private const String VERSION = "1.0";
         private const String USERAGENT = "IT-Kartellet ICAP Client/1.1";
         private const String ICAPTERMINATOR = "\r\n\r\n";
         private const String HTTPTERMINATOR = "0\r\n\r\n";
 
-        private int stdPreviewSize;
+        private readonly int stdPreviewSize;
         private const int stdRecieveLength = 8192;
         private const int stdSendLength = 8192;
 
-        private byte[] buffer = new byte[8192];
+        private readonly byte[] buffer = new byte[8192];
         private String tempString;
 
         /**
             * @throws IOException
-            * @throws ICAPException 
+            * @throws ICAPException
             */
-           
+
         /// <summary>
         /// Initializes the socket connection and IO streams. It askes the server for the available options and
         /// changes settings to match it.
@@ -45,7 +43,7 @@ namespace ICAPNameSpace
         /// <param name="previewSize">Specify a preview size to overwrite server preferences</parm>
         /// <exception cref="ICAPException">Thrown when error occurs in communication with server</exception>
         /// <exception cref="SocketException">Thrown when error occurs in connection to server</exception>
-        public ICAP(String serverIP, int port, String icapService, int previewSize=-1)
+        public ICAP(String serverIP, int port, String icapService, int previewSize = -1)
         {
             this.icapService = icapService;
             this.serverIP = serverIP;
@@ -65,8 +63,8 @@ namespace ICAPNameSpace
             }
             else
             {
-                String parseMe = getOptions();
-                Dictionary<string, string> responseMap = parseHeader(parseMe);
+                String parseMe = GetOptions();
+                Dictionary<string, string> responseMap = ParseHeader(parseMe);
 
                 responseMap.TryGetValue("StatusCode", out tempString);
                 if (tempString != null)
@@ -76,18 +74,18 @@ namespace ICAPNameSpace
                     switch (status)
                     {
                         case 200:
-                        responseMap.TryGetValue("Preview", out tempString);
-                        if (tempString != null)
-                        {
-                            stdPreviewSize = Convert.ToInt16(tempString);
+                            responseMap.TryGetValue("Preview", out tempString);
+                            if (tempString != null)
+                            {
+                                stdPreviewSize = Convert.ToInt16(tempString);
                             }; break;
-                            default: throw new ICAPException("Could not get preview size from server");
-                        }
+                        default: throw new ICAPException("Could not get preview size from server");
                     }
-                    else
-                    {
-                        throw new ICAPException("Could not get options from server");
-                    }
+                }
+                else
+                {
+                    throw new ICAPException("Could not get options from server");
+                }
             }
         }
 
@@ -98,7 +96,7 @@ namespace ICAPNameSpace
         /// <exception cref="ICAPException">Thrown when error occurs in communication with server</exception>
         /// <exception cref="IOException">Thrown when error occurs in reading file</exception>
         /// <exception cref="SocketException">Thrown if socket is closed unexpectedly.</exception>
-        public bool scanFile(String filepath)
+        public bool ScanFile(String filepath)
         {
             using (FileStream fileStream = new FileStream(filepath, FileMode.Open))
             {
@@ -150,8 +148,8 @@ namespace ICAPNameSpace
                 if (fileSize > previewSize)
                 {
                     //TODO: add timeout. It will hang if no response is recieved
-                    String parseMe = getHeader(ICAPTERMINATOR);
-                    responseMap = parseHeader(parseMe);
+                    String parseMe = GetHeader(ICAPTERMINATOR);
+                    responseMap = ParseHeader(parseMe);
 
                     responseMap.TryGetValue("StatusCode", out tempString);
                     if (tempString != null)
@@ -188,20 +186,19 @@ namespace ICAPNameSpace
                 //fileStream.Close();
 
                 responseMap.Clear();
-                String response = getHeader(ICAPTERMINATOR);
-                responseMap = parseHeader(response);
+                String response = GetHeader(ICAPTERMINATOR);
+                responseMap = ParseHeader(response);
 
                 responseMap.TryGetValue("StatusCode", out tempString);
                 if (tempString != null)
                 {
                     status = Convert.ToInt16(tempString);
 
-
                     if (status == 204) { return true; } //Unmodified
 
                     if (status == 200) //OK - The ICAP status is ok, but the encapsulated HTTP status will likely be different
                     {
-                        response = getHeader(HTTPTERMINATOR);
+                        response = GetHeader(HTTPTERMINATOR);
                         // Searching for: <title>ProxyAV: Access Denied</title>
                         int x = response.IndexOf("<title>", 0);
                         int y = response.IndexOf("</title>", x);
@@ -221,7 +218,7 @@ namespace ICAPNameSpace
         /// Automatically asks for the servers available options and returns the raw response as a String.
         /// </summary>
         /// <returns>String of the raw response</returns>
-        private string getOptions()
+        private string GetOptions()
         {
             byte[] msg = Encoding.ASCII.GetBytes(
                 "OPTIONS icap://" + serverIP + "/" + icapService + " ICAP/" + VERSION + "\r\n"
@@ -231,7 +228,7 @@ namespace ICAPNameSpace
                 + "\r\n");
             sender.Send(msg);
 
-            return getHeader(ICAPTERMINATOR);
+            return GetHeader(ICAPTERMINATOR);
         }
 
         /// <summary>
@@ -240,7 +237,7 @@ namespace ICAPNameSpace
         /// <param name="terminator">Relative or absolute filepath to a file.</parm>
         /// <exception cref="ICAPException">Thrown when error occurs in communication with server</exception>
         /// <returns>String of the raw response</returns>
-        private String getHeader(String terminator)
+        private String GetHeader(String terminator)
         {
             byte[] endofheader = System.Text.Encoding.UTF8.GetBytes(terminator);
             byte[] buffer = new byte[stdRecieveLength];
@@ -269,7 +266,7 @@ namespace ICAPNameSpace
         /// </summary>
         /// <param name="response">A raw response header as a String.</parm>
         /// <returns>Dictionary of the key,value pairs of the response</returns>
-        private Dictionary<String, String> parseHeader(String response)
+        private Dictionary<String, String> ParseHeader(String response)
         {
             Dictionary<String, String> headers = new Dictionary<String, String>();
 
@@ -286,7 +283,7 @@ namespace ICAPNameSpace
             String statusCode = response.Substring(x + 1, y - x - 1);
             headers.Add("StatusCode", statusCode);
 
-            // Each line in the sample is ended with "\r\n". 
+            // Each line in the sample is ended with "\r\n".
             // When (i+2==response.length()) The end of the header have been reached.
             // The +=2 is added to skip the "\r\n".
             // Read headers
@@ -316,16 +313,13 @@ namespace ICAPNameSpace
                 : base(message)
             {
             }
-
         }
 
         public void Dispose()
         {
             sender.Shutdown(SocketShutdown.Both);
             sender.Close();
-            sender.Dispose();
             //fileStream.Close();
-            //throw new NotImplementedException();
         }
     }
 }
