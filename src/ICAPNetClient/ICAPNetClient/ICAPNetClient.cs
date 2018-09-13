@@ -8,7 +8,7 @@ using System.Text;
 
 namespace ICAPNameSpace
 {
-    public class ICAP : IDisposable
+    public class ICAPNetClient : IDisposable
     {
         private readonly String serverIP;
         private readonly int port;
@@ -43,7 +43,7 @@ namespace ICAPNameSpace
         /// <param name="previewSize">Specify a preview size to overwrite server preferences</parm>
         /// <exception cref="ICAPException">Thrown when error occurs in communication with server</exception>
         /// <exception cref="SocketException">Thrown when error occurs in connection to server</exception>
-        public ICAP(String serverIP, int port, String icapService, int previewSize = -1)
+        public ICAPNetClient(String serverIP, int port, String icapService, int previewSize = -1)
         {
             this.icapService = icapService;
             this.serverIP = serverIP;
