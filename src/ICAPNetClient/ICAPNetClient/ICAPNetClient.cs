@@ -1,55 +1,49 @@
-﻿using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
-using System.Net;
-using System.Net.Sockets;
-using System.Text;
-
-namespace ICAPNameSpace
+﻿namespace ICAPNameSpace
 {
+    using System;
+    using System.Collections.Generic;
+    using System.IO;
+    using System.Linq;
+    using System.Net;
+    using System.Net.Sockets;
+    using System.Text;
+
     public class ICAPNetClient : IDisposable
     {
-        private readonly String serverIP;
+        private const string VERSION = "1.0";
+        private const string USERAGENT = "IT-Kartellet ICAP Client/1.1";
+        private const string ICAPTERMINATOR = "\r\n\r\n";
+        private const string HTTPTERMINATOR = "0\r\n\r\n";
+        private const int StdRecieveLength = 8192;
+        private const int StdSendLength = 8192;
+
+        private readonly string serverIP;
         private readonly int port;
+        private readonly string icapService;
+        private readonly int stdPreviewSize;
+        private readonly byte[] buffer = new byte[8192];
 
         private Socket sender;
-
-        private readonly String icapService;
-        private const String VERSION = "1.0";
-        private const String USERAGENT = "IT-Kartellet ICAP Client/1.1";
-        private const String ICAPTERMINATOR = "\r\n\r\n";
-        private const String HTTPTERMINATOR = "0\r\n\r\n";
-
-        private readonly int stdPreviewSize;
-        private const int stdRecieveLength = 8192;
-        private const int stdSendLength = 8192;
-
-        private readonly byte[] buffer = new byte[8192];
-        private String tempString;
-
-        /**
-            * @throws IOException
-            * @throws ICAPException
-            */
+        private string tempString;
 
         /// <summary>
+        /// Initializes a new instance of the <see cref="ICAPNetClient" /> class.
         /// Initializes the socket connection and IO streams. It askes the server for the available options and
         /// changes settings to match it.
         /// </summary>
-        /// <param name="serverIP">The IP address to connect to.</parm>
-        /// <param name="port">The port in the host to use.</parm>
-        /// <param name="icapService">The service to use (fx "avscan").</parm>
-        /// <param name="previewSize">Specify a preview size to overwrite server preferences</parm>
+        /// <param name="serverIP">The IP address to connect to.</param>
+        /// <param name="port">The port in the host to use.</param>
+        /// <param name="icapService">The service to use.</param>
+        /// <param name="previewSize">Specify a preview size to overwrite server preferences</param>
         /// <exception cref="ICAPException">Thrown when error occurs in communication with server</exception>
         /// <exception cref="SocketException">Thrown when error occurs in connection to server</exception>
-        public ICAPNetClient(String serverIP, int port, String icapService, int previewSize = -1)
+        public ICAPNetClient(string serverIP, int port, string icapService, int previewSize = -1)
         {
-            this.icapService = icapService;
             this.serverIP = serverIP;
             this.port = port;
+            this.icapService = icapService;
 
-            //Initialize connection
+            // Initialize connection
             IPAddress ipAddress = IPAddress.Parse(serverIP);
             IPEndPoint remoteEP = new IPEndPoint(ipAddress, port);
 
@@ -63,7 +57,7 @@ namespace ICAPNameSpace
             }
             else
             {
-                String parseMe = GetOptions();
+                string parseMe = GetOptions();
                 Dictionary<string, string> responseMap = ParseHeader(parseMe);
 
                 responseMap.TryGetValue("StatusCode", out tempString);
@@ -78,7 +72,10 @@ namespace ICAPNameSpace
                             if (tempString != null)
                             {
                                 stdPreviewSize = Convert.ToInt16(tempString);
-                            }; break;
+                            }
+
+                            break;
+
                         default: throw new ICAPException("Could not get preview size from server");
                     }
                 }
@@ -90,20 +87,21 @@ namespace ICAPNameSpace
         }
 
         /// <summary>
-        /// Automatically asks for the servers available options and returns the raw response as a String.
+        /// Automatically asks for the servers available options and returns the raw response as a string.
         /// </summary>
-        /// <param name="filepath">Relative or absolute filepath to a file.</parm>
+        /// <param name="filepath">Relative or absolute path to a file.</param>
         /// <exception cref="ICAPException">Thrown when error occurs in communication with server</exception>
         /// <exception cref="IOException">Thrown when error occurs in reading file</exception>
         /// <exception cref="SocketException">Thrown if socket is closed unexpectedly.</exception>
-        public bool ScanFile(String filepath)
+        /// <returns></returns>
+        public bool ScanFile(string filepath)
         {
             using (FileStream fileStream = new FileStream(filepath, FileMode.Open))
             {
                 int fileSize = (int)fileStream.Length;
 
-                //First part of header
-                String resBody = "Content-Length: " + fileSize + "\r\n\r\n";
+                // First part of header
+                string resBody = "Content-Length: " + fileSize + "\r\n\r\n";
 
                 int previewSize = stdPreviewSize;
                 if (fileSize < stdPreviewSize)
@@ -124,7 +122,7 @@ namespace ICAPNameSpace
 
                 sender.Send(requestBuffer);
 
-                //Sending preview or, if smaller than previewSize, the whole file.
+                // Sending preview or, if smaller than previewSize, the whole file.
                 byte[] chunk = new byte[previewSize];
 
                 fileStream.Read(chunk, 0, previewSize);
@@ -142,13 +140,13 @@ namespace ICAPNameSpace
                 // Parse the response! It might not be "100 continue".
                 // if fileSize<previewSize, then the stream waiting is actually the allowed/disallowed signal
                 // otherwise it is a "go" for the rest of the file.
-                Dictionary<String, String> responseMap = new Dictionary<string, string>();
+                Dictionary<string, string> responseMap = new Dictionary<string, string>();
                 int status;
 
                 if (fileSize > previewSize)
                 {
-                    //TODO: add timeout. It will hang if no response is recieved
-                    String parseMe = GetHeader(ICAPTERMINATOR);
+                    // TODO: add timeout. It will hang if no response is recieved
+                    string parseMe = this.GetHeader(ICAPTERMINATOR);
                     responseMap = ParseHeader(parseMe);
 
                     responseMap.TryGetValue("StatusCode", out tempString);
@@ -158,7 +156,7 @@ namespace ICAPNameSpace
 
                         switch (status)
                         {
-                            case 100: break; //Continue transfer
+                            case 100: break; // Continue transfer
                             case 200: return false;
                             case 204: return true;
                             case 404: throw new ICAPException("404: ICAP Service not found");
@@ -167,26 +165,27 @@ namespace ICAPNameSpace
                     }
                 }
 
-                //Sending remaining part of file
+                // Sending remaining part of file
                 if (fileSize > previewSize)
                 {
                     int offset = previewSize;
                     int n;
-                    byte[] buffer = new byte[stdSendLength];
-                    while ((n = fileStream.Read(buffer, 0, stdSendLength)) > 0)
+                    byte[] buffer = new byte[StdSendLength];
+                    while ((n = fileStream.Read(buffer, 0, StdSendLength)) > 0)
                     {
                         offset += n;  // offset for next reading
                         sender.Send(Encoding.ASCII.GetBytes(buffer.Length.ToString("X") + "\r\n"));
                         sender.Send(buffer);
                         sender.Send(Encoding.ASCII.GetBytes("\r\n"));
                     }
-                    //Closing file transfer.
+
+                    // Closing file transfer.
                     sender.Send(Encoding.ASCII.GetBytes("0\r\n\r\n"));
                 }
-                //fileStream.Close();
+                ////fileStream.Close();
 
                 responseMap.Clear();
-                String response = GetHeader(ICAPTERMINATOR);
+                string response = GetHeader(ICAPTERMINATOR);
                 responseMap = ParseHeader(response);
 
                 responseMap.TryGetValue("StatusCode", out tempString);
@@ -194,15 +193,21 @@ namespace ICAPNameSpace
                 {
                     status = Convert.ToInt16(tempString);
 
-                    if (status == 204) { return true; } //Unmodified
-
-                    if (status == 200) //OK - The ICAP status is ok, but the encapsulated HTTP status will likely be different
+                    if (status == 204)
                     {
+                        // Unmodified
+                        return true;
+                    }
+
+                    if (status == 200)
+                    {
+                        // OK - The ICAP status is ok, but the encapsulated HTTP status will likely be different
                         response = GetHeader(HTTPTERMINATOR);
+
                         // Searching for: <title>ProxyAV: Access Denied</title>
                         int x = response.IndexOf("<title>", 0);
                         int y = response.IndexOf("</title>", x);
-                        String statusCode = response.Substring(x + 7, y - x - 7);
+                        string statusCode = response.Substring(x + 7, y - x - 7);
 
                         if (statusCode.Equals("ProxyAV: Access Denied"))
                         {
@@ -214,10 +219,17 @@ namespace ICAPNameSpace
             }
         }
 
+        public void Dispose()
+        {
+            sender.Shutdown(SocketShutdown.Both);
+            sender.Close();
+            ////fileStream.Close();
+        }
+
         /// <summary>
-        /// Automatically asks for the servers available options and returns the raw response as a String.
+        /// Automatically asks for the servers available options and returns the raw response as a string.
         /// </summary>
-        /// <returns>String of the raw response</returns>
+        /// <returns>string of the raw response</returns>
         private string GetOptions()
         {
             byte[] msg = Encoding.ASCII.GetBytes(
@@ -232,23 +244,27 @@ namespace ICAPNameSpace
         }
 
         /// <summary>
-        /// Receive an expected ICAP header as response of a request. The returned String should be parsed with parseHeader()
+        /// Receive an expected ICAP header as response of a request. The returned string should be parsed with parseHeader()
         /// </summary>
-        /// <param name="terminator">Relative or absolute filepath to a file.</parm>
+        /// <param name="terminator">Relative or absolute path to a file.</param>
         /// <exception cref="ICAPException">Thrown when error occurs in communication with server</exception>
-        /// <returns>String of the raw response</returns>
-        private String GetHeader(String terminator)
+        /// <returns>string of the raw response</returns>
+        private string GetHeader(string terminator)
         {
             byte[] endofheader = System.Text.Encoding.UTF8.GetBytes(terminator);
-            byte[] buffer = new byte[stdRecieveLength];
+            byte[] buffer = new byte[StdRecieveLength];
 
             int n;
             int offset = 0;
-            //stdRecieveLength-offset is replaced by '1' to not receive the next (HTTP) header.
-            while ((offset < stdRecieveLength) && ((n = sender.Receive(buffer, offset, 1, SocketFlags.None)) != 0)) // first part is to secure against DOS
+
+            // stdRecieveLength-offset is replaced by '1' to not receive the next (HTTP) header.
+            // first part is to secure against DOS
+            while ((offset < StdRecieveLength) && ((n = sender.Receive(buffer, offset, 1, SocketFlags.None)) != 0))
             {
                 offset += n;
-                if (offset > endofheader.Length + 13) // 13 is the smallest possible message (ICAP/1.0 xxx\r\n) or (HTTP/1.0 xxx\r\n)
+
+                // 13 is the smallest possible message (ICAP/1.0 xxx\r\n) or (HTTP/1.0 xxx\r\n)
+                if (offset > endofheader.Length + 13)
                 {
                     byte[] lastBytes = new byte[endofheader.Length];
                     Array.Copy(buffer, offset - endofheader.Length, lastBytes, 0, endofheader.Length);
@@ -262,13 +278,13 @@ namespace ICAPNameSpace
         }
 
         /// <summary>
-        /// Given a raw response header as a String, it will parse through it and return a Dictionary of the result
+        /// Given a raw response header as a string, it will parse through it and return a Dictionary of the result
         /// </summary>
-        /// <param name="response">A raw response header as a String.</parm>
+        /// <param name="response">A raw response header as a string.</param>
         /// <returns>Dictionary of the key,value pairs of the response</returns>
-        private Dictionary<String, String> ParseHeader(String response)
+        private Dictionary<string, string> ParseHeader(string response)
         {
-            Dictionary<String, String> headers = new Dictionary<String, String>();
+            Dictionary<string, string> headers = new Dictionary<string, string>();
 
             /****SAMPLE:****
              * ICAP/1.0 204 Unmodified
@@ -276,11 +292,12 @@ namespace ICAPNameSpace
              * Connection: keep-alive
              * ISTag: CI0001-000-0978-6918203
              */
+
             // The status code is located between the first 2 whitespaces.
             // Read status code
             int x = response.IndexOf(" ", 0);
             int y = response.IndexOf(" ", x + 1);
-            String statusCode = response.Substring(x + 1, y - x - 1);
+            string statusCode = response.Substring(x + 1, y - x - 1);
             headers.Add("StatusCode", statusCode);
 
             // Each line in the sample is ended with "\r\n".
@@ -292,34 +309,16 @@ namespace ICAPNameSpace
             while (i + 2 != response.Length && response.Substring(i).Contains(':'))
             {
                 int n = response.IndexOf(":", i);
-                String key = response.Substring(i, n - i);
+                string key = response.Substring(i, n - i);
 
                 n += 2;
                 i = response.IndexOf("\r\n", n);
-                String value = response.Substring(n, i - n);
+                string value = response.Substring(n, i - n);
 
                 headers.Add(key, value);
                 i += 2;
             }
             return headers;
-        }
-
-        /// <summary>
-        /// A basic excpetion to show ICAP-related errors
-        /// </summary>
-        public class ICAPException : Exception
-        {
-            public ICAPException(string message)
-                : base(message)
-            {
-            }
-        }
-
-        public void Dispose()
-        {
-            sender.Shutdown(SocketShutdown.Both);
-            sender.Close();
-            //fileStream.Close();
         }
     }
 }

@@ -39,7 +39,7 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="ICAP.cs" />
+    <Compile Include="ICAPNetClient.cs" />
     <Compile Include="ICAPException.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
