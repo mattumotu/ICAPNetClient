@@ -1,4 +1,4 @@
-﻿namespace ICAPNameSpace
+﻿namespace ICAPNetClient
 {
     using System;
     using System.Collections.Generic;
