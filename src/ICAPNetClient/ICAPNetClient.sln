@@ -1,0 +1,30 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio 15
+VisualStudioVersion = 15.0.28010.2026
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ICAPNetClient", "ICAPNetClient\ICAPNetClient.csproj", "{D9B0A119-68FB-43B7-A246-4CC1B96B760F}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{8262C047-7657-42D6-9A03-AF8D4A8EADF3}"
+	ProjectSection(SolutionItems) = preProject
+		..\..\appveyor.yml = ..\..\appveyor.yml
+	EndProjectSection
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{D9B0A119-68FB-43B7-A246-4CC1B96B760F}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{D9B0A119-68FB-43B7-A246-4CC1B96B760F}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{D9B0A119-68FB-43B7-A246-4CC1B96B760F}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{D9B0A119-68FB-43B7-A246-4CC1B96B760F}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {E0B39CF1-C6AA-4326-BDDB-E12589A70F86}
+	EndGlobalSection
+EndGlobal
